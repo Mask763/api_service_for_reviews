@@ -2,9 +2,10 @@ from rest_framework import viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from django.db.models import Avg
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from django.core.exceptions import BadRequest
 
-from settings.models import (
+from api_yamdb.models import (
     Title,
 )
 from reviews.models import (
@@ -15,23 +16,20 @@ from reviews.serializers import (
     ReviewSerializer,
     CommentSerializer,
 )
-from reviews.permissions import IsAuthor, IsModerator, IsAdmin
+from reviews.permissions import IsAuthorOrModeratorOrAdmin
 
 
 class ReviewsViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = IsAuthor, IsModerator, IsAdmin
     pagination_class = LimitOffsetPagination
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
-    # def get_permissions(self):
-    #     if self.action in ('list', 'retrieve'):
-    #         self.permission_classes = (AllowAny,)
-    #     if self.action in ('create',):
-    #         self.permission_classes = (IsAuthenticated,)
-    #     if self.action in ('update', 'destroy'):
-    #             self.permission_classes = (IsAuthor, IsModerator, IsAdmin,)
-    #     return super().get_permissions()
+    def get_permissions(self):
+        if self.action in ('partial_update', 'destroy'):
+            return (IsAuthorOrModeratorOrAdmin(),)
+        return super().get_permissions()
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -45,15 +43,23 @@ class ReviewsViewSet(viewsets.ModelViewSet):
         return queryset
 
     def set_score(self):
-        average_score = get_queryset(self).aggregate(Avg('score'))
-        get_title(self).update(score=round(average_score))
+        average_score = self.get_queryset().aggregate(Avg('score'))
+        title = self.get_title()
+        title.rating = average_score['score__avg']
+        title.save(update_fields=["rating"])
 
     def perform_create(self, serializer):
+        user = self.request.user
+        if Review.objects.filter(author=user, title=self.get_title()).exists():
+            raise BadRequest(
+            'Запрещено добавлять больше одного отзыва на одно произведение'
+        )
         serializer.save(
             author=self.request.user,
             title=self.get_title(),
         )
         self.set_score()
+
 
     def perform_update(self, serializer):
         serializer.save()
@@ -67,17 +73,14 @@ class ReviewsViewSet(viewsets.ModelViewSet):
 class CommentsViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    # permission_classes = (IsAuthor, IsModerator, IsAdmin,)
     pagination_class = LimitOffsetPagination
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
-    # def get_permissions(self):
-    #     if self.action in ('list', 'retrieve'):
-    #         self.permission_classes = (AllowAny,)
-    #     if self.action in ('create',):
-    #         self.permission_classes = (IsAuthenticated,)
-    #     if self.action in ('update', 'destroy'):
-    #             self.permission_classes = (IsAuthor, IsModerator, IsAdmin,)
-    #     return super().get_permissions()
+    def get_permissions(self):
+        if self.action in ('partial_update', 'destroy'):
+            return (IsAuthorOrModeratorOrAdmin(),)
+        return super().get_permissions()
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')

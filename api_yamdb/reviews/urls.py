@@ -7,11 +7,13 @@ from reviews.views import (
 )
 
 router = DefaultRouter()
-router.register('comments', CommentsViewSet, basename='comments')
+router.register(r'(?P<review_id>\d+)/comments',
+                CommentsViewSet,
+                basename='comments'
+                )
+# router.register('comments', CommentsViewSet, basename='comments')
 router.register('', ReviewsViewSet, basename='reviews')
 urlpatterns = [
     path('', include(router.urls)),
 ]
-# urlpatterns = [
-#   path(r'titles/(?P<title_id>\d+)/reviews/', include('review.urls')),
-# ]
+
