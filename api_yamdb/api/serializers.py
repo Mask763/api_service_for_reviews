@@ -1,11 +1,8 @@
-from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
-from rest_framework.validators import UniqueTogetherValidator
 from datetime import datetime
-
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 
-from api_yamdb.models import Category, Title, Genre
+from api_yamdb.models import Category, Genre, Title
 
 User = get_user_model()
 
@@ -49,14 +46,14 @@ class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор категории."""
     class Meta:
         model = Category
-        fields = ('name', 'slug', 'id')
+        fields = ('name', 'slug')
 
 
 class GenreSerializer(serializers.ModelSerializer):
     """Сериализвтор жанра."""
     class Meta:
         model = Genre
-        fields = ('name', 'slug', 'id')
+        fields = ('name', 'slug')
 
 
 class TitleSerializer(serializers.ModelSerializer):
@@ -76,10 +73,17 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = ('name', 'genre', 'category', 'year', 'description', 'id')
 
     def validate_year(self, value):
-        year = datetime.date.today().year
+        year = datetime.now().year
         if value > year:
             raise serializers.ValidationError(
                 'Неверно введён год!'
+            )
+        return value
+
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                'Название произведения не может быть длиннее 256 символов.'
             )
         return value
 

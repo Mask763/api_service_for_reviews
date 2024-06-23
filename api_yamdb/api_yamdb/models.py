@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MaxValueValidator, MinValueValidator
+
 
 class CustomUser(AbstractUser):
     username = models.CharField(
@@ -64,7 +66,11 @@ class CustomUser(AbstractUser):
 
 class Category(models.Model):
     name = models.CharField('Категория', max_length=256)
-    slug = models.SlugField('Сокращённая категория', unique=True, max_length=50)
+    slug = models.SlugField(
+        'Сокращённая категория',
+        unique=True,
+        max_length=50
+    )
 
     class Meta:
         ordering = ['-id']
@@ -74,7 +80,7 @@ class Category(models.Model):
 
 
 class Genre(models.Model):
-    name = models.CharField('Жанр',max_length=256)
+    name = models.CharField('Жанр', max_length=256)
     slug = models.SlugField('Жанр сокращённо', unique=True, max_length=50)
 
     class Meta:
@@ -100,6 +106,14 @@ class Title(models.Model):
     )
     year = models.IntegerField(default=1850)
     description = models.TextField('Описание', blank=True, max_length=256)
+    rating = models.IntegerField(
+        validators=[
+            MaxValueValidator(10),
+            MinValueValidator(1)
+        ],
+        blank=True,
+        null=True
+    )
 
     def __str__(self) -> str:
         return self.name
