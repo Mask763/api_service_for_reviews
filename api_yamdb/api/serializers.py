@@ -1,24 +1,30 @@
+from datetime import datetime
+
 from rest_framework import serializers
 
-from reviews.models import Category, Title, Genre
+from reviews.models import Category, Genre, Title
 
 
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор категории."""
+    
     class Meta:
         model = Category
-        fields = ('name', 'slug', 'id')
+        fields = ('name', 'slug')
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    """Сериализвтор жанра."""
+    """Сериализатор жанра."""
+    
     class Meta:
         model = Genre
-        fields = ('name', 'slug', 'id')
 
+        fields = ('name', 'slug')
 
+  
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор на добавление и изменение произведения."""
+
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'
@@ -34,10 +40,31 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = ('name', 'genre', 'category', 'year', 'description', 'id')
 
 
+    def validate_year(self, value):
+        year = datetime.now().year
+        if value > year:
+            raise serializers.ValidationError(
+                'Неверно введён год!'
+            )
+        return value
+
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                'Название произведения не может быть длиннее 256 символов.'
+            )
+        return value
+
+
 class TitleListSerializer(serializers.ModelSerializer):
     """Сериализатор на получение произведения."""
+    
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
+    rating = serializers.IntegerField(
+        source='rewiews__score_avg',
+        read_only=True
+    )
 
     class Meta:
         model = Title
