@@ -5,9 +5,7 @@ from django.db.models import Avg
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.core.exceptions import BadRequest
 
-from api_yamdb.models import (
-    Title,
-)
+from .models import Title
 from reviews.models import (
     Review,
     Comment,
@@ -52,19 +50,18 @@ class ReviewsViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if Review.objects.filter(author=user, title=self.get_title()).exists():
             raise BadRequest(
-            'Запрещено добавлять больше одного отзыва на одно произведение'
-        )
+                'Запрещено добавлять больше одного отзыва на одно произведение'
+            )
         serializer.save(
             author=self.request.user,
             title=self.get_title(),
         )
         self.set_score()
 
-
     def perform_update(self, serializer):
         serializer.save()
         self.set_score()
-    
+
     def perform_destroy(self, instance):
         instance.delete()
         self.set_score()
@@ -100,7 +97,7 @@ class CommentsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self.get_review().comments.all()
         return queryset
-    
+
     def perform_create(self, serializer):
         serializer.save(
             author=self.request.user,
