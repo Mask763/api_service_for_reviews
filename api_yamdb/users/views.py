@@ -14,7 +14,7 @@ from .serializers import (
     UserConfirmationSerializer,
     UserSerializer
 )
-from .permissions import IsAdminOrSuperUser
+from .permissions import IsAdminOnly
 
 
 User = get_user_model()
@@ -105,7 +105,7 @@ class UserForAdminViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserForAdminSerializer
     lookup_field = 'username'
-    permission_classes = (permissions.IsAuthenticated, IsAdminOrSuperUser)
+    permission_classes = (permissions.IsAuthenticated, IsAdminOnly)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
     pagination_class = PageNumberPagination
