@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from .config import WRONG_USERNAMES
+
 
 User = get_user_model()
 
@@ -35,8 +37,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return data
 
     def validate_username(self, value):
-        """Проверка имени пользователя на "me"."""
-        if value == 'me':
+        """Проверка на запрещенные имена пользователей."""
+        if value in WRONG_USERNAMES:
             raise serializers.ValidationError(
                 'Имя пользователя "me" недопустимо.'
             )
@@ -88,8 +90,8 @@ class UserSerializer(serializers.ModelSerializer):
         return data
 
     def validate_username(self, value):
-        """Проверка имени пользователя на "me"."""
-        if value == 'me':
+        """Проверка на запрещенные имена пользователей."""
+        if value in WRONG_USERNAMES:
             raise serializers.ValidationError(
                 'Имя пользователя "me" недопустимо.'
             )
@@ -148,8 +150,8 @@ class UserForAdminSerializer(serializers.ModelSerializer):
         return data
 
     def validate_username(self, value):
-        """Проверка имени пользователя на "me"."""
-        if value == 'me':
+        """Проверка на запрещенные имена пользователей."""
+        if value in WRONG_USERNAMES:
             raise serializers.ValidationError(
                 'Имя пользователя "me" недопустимо.'
             )

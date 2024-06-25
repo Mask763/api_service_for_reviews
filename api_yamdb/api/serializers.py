@@ -59,7 +59,15 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = ('name', 'genre', 'category', 'year', 'description', 'id')
+        fields = (
+            'name',
+            'genre',
+            'rating',
+            'category',
+            'year',
+            'description',
+            'id'
+        )
 
     def validate_year(self, value):
         year = datetime.now().year
@@ -82,10 +90,6 @@ class TitleListSerializer(serializers.ModelSerializer):
 
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
-    rating = serializers.IntegerField(
-        source='rewiews__score_avg',
-        read_only=True
-    )
 
     class Meta:
         model = Title
