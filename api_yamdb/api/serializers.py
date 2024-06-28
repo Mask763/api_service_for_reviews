@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from rest_framework import serializers
 
 from reviews.models import Category, Comment, Genre, Review, Title
@@ -11,9 +9,27 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Review
-        read_only_fields = ('title',)
+        exclude = ('title',)
+
+    def validate(self, data):
+        data = super().validate(data)
+        self.validate_one_review()
+        return data
+
+    def validate_one_review(self):
+        request = self.context['request']
+        title_id = request.parser_context.get('kwargs').get('title_id')
+        if (
+            request.method == "POST"
+            and Review.objects.filter(
+                author=request.user,
+                title=title_id
+            ).exists()
+        ):
+            raise serializers.ValidationError(
+                'Запрещено добавлять больше одного отзыва на одно произведение'
+            )
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -22,9 +38,8 @@ class CommentSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Comment
-        read_only_fields = ('title', 'review')
+        exclude = ('title', 'review')
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -54,6 +69,8 @@ class TitleSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
         slug_field='slug',
+        allow_null=False,
+        allow_empty=False,
         many=True
     )
 
@@ -62,27 +79,15 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = (
             'name',
             'genre',
-            'rating',
             'category',
             'year',
             'description',
-            'id'
         )
 
-    def validate_year(self, value):
-        year = datetime.now().year
-        if value > year:
-            raise serializers.ValidationError(
-                'Неверно введён год!'
-            )
-        return value
-
-    def validate_name(self, value):
-        if len(value) > 256:
-            raise serializers.ValidationError(
-                'Название произведения не может быть длиннее 256 символов.'
-            )
-        return value
+    def to_representation(self, instance):
+        super().to_representation(instance)
+        title_list_serializer = TitleListSerializer(instance)
+        return title_list_serializer.data
 
 
 class TitleListSerializer(serializers.ModelSerializer):
@@ -90,6 +95,7 @@ class TitleListSerializer(serializers.ModelSerializer):
 
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
@@ -97,3 +103,6 @@ class TitleListSerializer(serializers.ModelSerializer):
             'name', 'genre', 'category', 'year',
             'description', 'id', 'rating'
         )
+
+    def get_rating(self, obj):
+        return obj.rating if hasattr(obj, 'rating') else None
