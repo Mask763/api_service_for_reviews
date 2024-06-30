@@ -175,6 +175,8 @@ class TitleSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
         slug_field='slug',
+        allow_null=False,
+        allow_empty=False,
         many=True
     )
 
@@ -183,27 +185,15 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = (
             'name',
             'genre',
-            'rating',
             'category',
             'year',
             'description',
-            'id'
         )
 
-    def validate_year(self, value):
-        year = datetime.now().year
-        if value > year:
-            raise serializers.ValidationError(
-                'Неверно введён год!'
-            )
-        return value
-
-    def validate_name(self, value):
-        if len(value) > 256:
-            raise serializers.ValidationError(
-                'Название произведения не может быть длиннее 256 символов.'
-            )
-        return value
+    def to_representation(self, instance):
+        super().to_representation(instance)
+        title_list_serializer = TitleListSerializer(instance)
+        return title_list_serializer.data
 
 
 class TitleListSerializer(serializers.ModelSerializer):
@@ -211,6 +201,7 @@ class TitleListSerializer(serializers.ModelSerializer):
 
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
@@ -218,3 +209,6 @@ class TitleListSerializer(serializers.ModelSerializer):
             'name', 'genre', 'category', 'year',
             'description', 'id', 'rating'
         )
+
+    def get_rating(self, obj):
+        return obj.rating if hasattr(obj, 'rating') else None

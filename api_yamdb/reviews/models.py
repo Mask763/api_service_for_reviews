@@ -71,38 +71,35 @@ class ApplicationUser(AbstractUser):
     def is_moderator(self):
         return self.role == USER_ROLE_MODERATOR
 
+from .constants import MAX_LENGTH_MAIN
+from .mixins import NameSlugMixin
+from .service import validate_year
+
 
 User = get_user_model()
 
 
-class Category(models.Model):
-    name = models.CharField('Категория', max_length=256)
-    slug = models.SlugField(
-        'Сокращённая категория',
-        unique=True,
-        max_length=50
-    )
+class Category(NameSlugMixin):
+    """Модель Категории."""
 
     class Meta:
-        ordering = ['-id']
-
-    def __str__(self) -> str:
-        return self.slug
+        ordering = ('-slug',)
 
 
-class Genre(models.Model):
-    name = models.CharField('Жанр', max_length=256)
-    slug = models.SlugField('Жанр сокращённо', unique=True, max_length=50)
+class Genre(NameSlugMixin):
+    """Модель Жанра."""
 
     class Meta:
-        ordering = ['-id']
-
-    def __str__(self) -> str:
-        return self.slug
+        ordering = ('-slug',)
 
 
 class Title(models.Model):
-    name = models.CharField('Название проекта', null=False, max_length=256)
+    """Модель Фильма."""
+    name = models.CharField(
+        'Название проекта',
+        null=False,
+        max_length=MAX_LENGTH_MAIN
+    )
     genre = models.ManyToManyField(
         Genre,
         verbose_name='Жанры',
@@ -115,22 +112,20 @@ class Title(models.Model):
         blank=True,
         null=True
     )
-    year = models.IntegerField(default=1850)
-    description = models.TextField('Описание', blank=True, max_length=256)
-    rating = models.IntegerField(
-        validators=[
-            MaxValueValidator(10),
-            MinValueValidator(1)
-        ],
+    year = models.SmallIntegerField(
+        validators=[validate_year]
+    )
+    description = models.TextField(
+        'Описание',
         blank=True,
-        null=True
+        max_length=MAX_LENGTH_MAIN
     )
 
     def __str__(self) -> str:
         return self.name
 
     class Meta:
-        ordering = ['name']
+        ordering = ('name',)
 
 
 class Review(models.Model):

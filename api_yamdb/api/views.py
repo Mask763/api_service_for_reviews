@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Avg
 from django.core.exceptions import BadRequest
+from django.db.models import Avg
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -8,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .filters import TitleFilter
 from .permissions import (
     IsAdminOnly,
     IsAdminOrReadOnly,
@@ -31,6 +33,8 @@ from .serializers import (
     UserRegistrationSerializer,
     UserSerializer
 )
+from reviews.mixins import CategoryGenreMixin
+from .viewsets import ListCreateDestroyViewSet
 
 
 User = get_user_model()
@@ -151,77 +155,27 @@ class CommentsViewSet(viewsets.ModelViewSet):
         )
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = ('slug')
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance:
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    filter_backends = (filters.SearchFilter,)
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
+    filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
     search_fields = ('name', 'genre__slug', 'category__slug', 'year')
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_queryset(self):
-        queryset = Title.objects.all()
-        filters = {}
-
-        if genre_slug := self.request.query_params.get('genre', None):
-            filters['genre__slug'] = genre_slug
-        if category_slug := self.request.query_params.get('category', None):
-            filters['category__slug'] = category_slug
-        if year := self.request.query_params.get('year', None):
-            filters['year'] = year
-        if name := self.request.query_params.get('name', None):
-            filters['name'] = name
-
-        return queryset.filter(**filters)
+        return Title.objects.all().annotate(rating=Avg('reviews__score'))
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
             return TitleListSerializer
         return TitleSerializer
-
-    def update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance,
-            data=request.data,
-            partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
