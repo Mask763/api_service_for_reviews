@@ -110,7 +110,7 @@ STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
 # Project-specific settings
 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = 'users.ApplicationUser'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -131,4 +131,5 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FROM = 'yamdb@localhost'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'

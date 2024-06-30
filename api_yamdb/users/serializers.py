@@ -1,162 +1,83 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
-from .config import WRONG_USERNAMES
+from api_yamdb.settings import EMAIL_FROM
+from .constants import MAX_CHARFIELD_LENGTH, MAX_EMAIL_LENGTH, USER_ROLES
+from .validators import validate_forbidden_username
 
 
 User = get_user_model()
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.Serializer):
     """Сериализатор самостоятельной регистрации пользователя."""
 
     username = serializers.CharField(
-        max_length=150,
-        validators=[User.username_validator]
+        max_length=MAX_CHARFIELD_LENGTH,
+        validators=[User.username_validator, validate_forbidden_username]
     )
     email = serializers.EmailField(
-        max_length=254
+        max_length=MAX_EMAIL_LENGTH
     )
 
     def validate(self, data):
         username = data.get('username')
         email = data.get('email')
+        user_by_username = User.objects.filter(username=username).first()
+        user_by_email = User.objects.filter(email=email).first()
 
-        if User.objects.filter(username=username).exists():
-            if not User.objects.filter(email=email).exists():
+        if user_by_username != user_by_email:
+            if user_by_username:
                 raise serializers.ValidationError(
                     {"username": "Пользователь с таким именем уже существует."}
                 )
-
-        if User.objects.filter(email=email).exists():
-            if not User.objects.filter(username=username).exists():
-                raise serializers.ValidationError(
-                    {"email": "Пользователь с таким email уже существует."}
-                )
+            raise serializers.ValidationError(
+                {"email": "Пользователь с таким email уже существует."}
+            )
 
         return data
 
-    def validate_username(self, value):
-        """Проверка на запрещенные имена пользователей."""
-        if value in WRONG_USERNAMES:
-            raise serializers.ValidationError(
-                'Имя пользователя "me" недопустимо.'
-            )
-        return value
-
-    class Meta:
-        model = User
-        fields = ('username', 'email')
+    def create(self, validated_data):
+        user, created = User.objects.get_or_create(
+            username=validated_data['username'],
+            email=validated_data['email']
+        )
+        confirmation_code = default_token_generator.make_token(user)
+        send_mail(
+            subject='Код подтверждения',
+            message=f'Ваш код подтверждения: {confirmation_code}',
+            from_email=EMAIL_FROM,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return user
 
 
 class UserConfirmationSerializer(serializers.Serializer):
     """Сериализатор подтверждения регистрации пользователя."""
 
-    username = serializers.CharField(max_length=150)
-    confirmation_code = serializers.CharField(max_length=50)
-
-
-class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор пользователя."""
-
-    username = serializers.CharField(
-        max_length=150,
-        validators=[User.username_validator],
-    )
-    email = serializers.EmailField(
-        max_length=254,
-    )
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
-    bio = serializers.CharField()
-    role = serializers.CharField(read_only=True)
+    username = serializers.CharField(max_length=MAX_CHARFIELD_LENGTH)
+    confirmation_code = serializers.CharField(max_length=MAX_CHARFIELD_LENGTH)
 
     def validate(self, data):
         username = data.get('username')
-        email = data.get('email')
+        confirmation_code = data.get('confirmation_code')
 
-        if User.objects.filter(username=username).exists():
-            if not User.objects.filter(email=email).exists():
-                raise serializers.ValidationError(
-                    {"username": "Пользователь с таким именем уже существует."}
-                )
-
-        if User.objects.filter(email=email).exists():
-            if not User.objects.filter(username=username).exists():
-                raise serializers.ValidationError(
-                    {"email": "Пользователь с таким email уже существует."}
-                )
+        user = get_object_or_404(User, username=username)
+        if not default_token_generator.check_token(user, confirmation_code):
+            raise serializers.ValidationError(
+                {'confirmation_code': 'Некорректный код подтверждения'}
+            )
 
         return data
-
-    def validate_username(self, value):
-        """Проверка на запрещенные имена пользователей."""
-        if value in WRONG_USERNAMES:
-            raise serializers.ValidationError(
-                'Имя пользователя "me" недопустимо.'
-            )
-        return value
-
-    class Meta:
-        model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role'
-        )
 
 
 class UserForAdminSerializer(serializers.ModelSerializer):
     """Сериализатор пользователя для администратора."""
 
-    username = serializers.CharField(
-        max_length=150,
-        validators=[User.username_validator],
-    )
-    email = serializers.EmailField(
-        max_length=254,
-    )
-    first_name = serializers.CharField(max_length=150, required=False)
-    last_name = serializers.CharField(max_length=150, required=False)
-    bio = serializers.CharField(required=False)
-    role = serializers.ChoiceField(
-        required=False,
-        choices=(
-            ('user', 'User'),
-            ('admin', 'Admin'),
-            ('moderator', 'Moderator')
-        ),
-    )
-
-    def validate(self, data):
-        username = data.get('username')
-        email = data.get('email')
-
-        if User.objects.filter(username=username).exists():
-            if not User.objects.filter(email=email).exists():
-                raise serializers.ValidationError(
-                    {"username": "Пользователь с таким именем уже существует."}
-                )
-
-        if User.objects.filter(email=email).exists():
-            if not User.objects.filter(username=username).exists():
-                raise serializers.ValidationError(
-                    {"email": "Пользователь с таким email уже существует."}
-                )
-
-        return data
-
-    def validate_username(self, value):
-        """Проверка на запрещенные имена пользователей."""
-        if value in WRONG_USERNAMES:
-            raise serializers.ValidationError(
-                'Имя пользователя "me" недопустимо.'
-            )
-        return value
-
     class Meta:
         model = User
         fields = (
@@ -167,3 +88,17 @@ class UserForAdminSerializer(serializers.ModelSerializer):
             'bio',
             'role'
         )
+        extra_kwargs = {
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+            'bio': {'required': False},
+            'role': {'required': False,
+                     'choices': USER_ROLES},
+        }
+
+
+class UserSerializer(UserForAdminSerializer):
+    """Сериализатор пользователя."""
+
+    class Meta(UserForAdminSerializer.Meta):
+        read_only_fields = ('role',)

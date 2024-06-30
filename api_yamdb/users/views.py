@@ -1,10 +1,8 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status, permissions, viewsets, filters
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,21 +28,9 @@ class SignUp(APIView):
 
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user, created = User.objects.get_or_create(
-                username=serializer.validated_data['username'],
-                email=serializer.validated_data['email']
-            )
-            confirmation_code = default_token_generator.make_token(user)
-            send_mail(
-                subject='Код подтверждения',
-                message=f'Ваш код подтверждения: {confirmation_code}',
-                from_email='yamdb@localhost',
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TokenObtainView(APIView):
@@ -54,46 +40,14 @@ class TokenObtainView(APIView):
 
     def post(self, request):
         serializer = UserConfirmationSerializer(data=request.data)
-        if serializer.is_valid():
-            username = serializer.validated_data['username']
-            confirmation_code = serializer.validated_data['confirmation_code']
-            user = get_object_or_404(User, username=username)
-            if default_token_generator.check_token(user, confirmation_code):
-                refresh = RefreshToken.for_user(user)
-                return Response(
-                    {'token': str(refresh.access_token)},
-                    status=status.HTTP_200_OK
-                )
-            else:
-                return Response(
-                    {'error': 'Некорректный код подтверждения'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UserViewSet(viewsets.ViewSet):
-    """
-    Представление для самостоятельного получения
-    и редактирования данных пользователя.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def retrieve(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
-
-    def partial_update(self, request):
-        serializer = UserSerializer(
-            request.user,
-            data=request.data,
-            partial=True
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data['username']
+        user = get_object_or_404(User, username=username)
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {'token': str(refresh.access_token)},
+            status=status.HTTP_200_OK
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserForAdminViewSet(viewsets.ModelViewSet):
@@ -104,14 +58,23 @@ class UserForAdminViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserForAdminSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
     lookup_field = 'username'
-    permission_classes = (permissions.IsAuthenticated, IsAdminOnly)
+    permission_classes = (IsAdminOnly,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
-    pagination_class = PageNumberPagination
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response({'detail': 'PUT метод не поддерживается.'},
-                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        return super().update(request, *args, **kwargs)
+    @action(
+        permission_classes=(permissions.IsAuthenticated,),
+        detail=False,
+        methods=['get', 'patch']
+    )
+    def me(self, request):
+        user = request.user
+        if request.method == 'GET':
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
