@@ -22,7 +22,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users.apps.UsersConfig',
     'api.apps.ApiConfig',
     'reviews.apps.ReviewsConfig',
     'rest_framework',
@@ -110,7 +109,7 @@ STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
 # Project-specific settings
 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = 'reviews.ApplicationUser'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -131,4 +130,5 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FROM = 'yamdb@localhost'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'

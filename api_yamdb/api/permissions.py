@@ -1,17 +1,15 @@
 from rest_framework import permissions
 
-from .config import USER_ROLE_ADMIN, USER_ROLE_MODERATOR
-
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        if request.user.is_authenticated:
-            return (
-                request.user.role == USER_ROLE_ADMIN
-                or request.user.is_superuser
-            )
+        return (request.method in permissions.SAFE_METHODS
+                or (request.user.is_authenticated
+                    and (request.user.is_admin
+                         or request.user.is_staff
+                         or request.user.is_superuser)
+                    )
+                )
 
 
 class IsAdminOnly(permissions.BasePermission):
@@ -19,7 +17,8 @@ class IsAdminOnly(permissions.BasePermission):
         return (
             request.user.is_authenticated
             and (
-                request.user.role == USER_ROLE_ADMIN
+                request.user.is_admin
+                or request.user.is_staff
                 or request.user.is_superuser
             )
         )
@@ -30,8 +29,9 @@ class IsAuthorOrAdministration(permissions.IsAuthenticatedOrReadOnly):
         if request.user.is_authenticated:
             return (
                 request.user == obj.author
-                or request.user.role == USER_ROLE_ADMIN
-                or request.user.role == USER_ROLE_MODERATOR
+                or request.user.is_admin
+                or request.user.is_staff
+                or request.user.is_moderator
                 or request.user.is_superuser
             )
         return request.method in permissions.SAFE_METHODS
