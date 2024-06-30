@@ -56,6 +56,14 @@ python3 manage.py runserver
 ```
 http://127.0.0.1:8000/redoc/
 ```
+### Наполнение тестовой базы данных
+Для запуска скрипта загрузки данных из csv файла в базу данных:
+```
+cd api_yamdb
+```
+```
+python load_csv_to_db.py
+```
 ### Основной стек
 Проект написан с использованием Python 3.9.10, Django и Django REST Framework.
 ### Авторы проекта
