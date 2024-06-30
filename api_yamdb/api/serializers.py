@@ -115,9 +115,27 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Review
-        read_only_fields = ('title',)
+        exclude = ('title',)
+
+    def validate(self, data):
+        data = super().validate(data)
+        self.validate_one_review()
+        return data
+
+    def validate_one_review(self):
+        request = self.context['request']
+        title_id = request.parser_context.get('kwargs').get('title_id')
+        if (
+            request.method == "POST"
+            and Review.objects.filter(
+                author=request.user,
+                title=title_id
+            ).exists()
+        ):
+            raise serializers.ValidationError(
+                'Запрещено добавлять больше одного отзыва на одно произведение'
+            )
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -126,9 +144,8 @@ class CommentSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Comment
-        read_only_fields = ('title', 'review')
+        exclude = ('title', 'review')
 
 
 class CategorySerializer(serializers.ModelSerializer):
