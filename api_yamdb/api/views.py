@@ -1,8 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import BadRequest
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
@@ -34,7 +33,6 @@ from .serializers import (
     UserSerializer
 )
 from reviews.mixins import CategoryGenreMixin
-from .viewsets import ListCreateDestroyViewSet
 
 
 User = get_user_model()
@@ -155,6 +153,15 @@ class CommentsViewSet(viewsets.ModelViewSet):
         )
 
 
+class ListCreateDestroyViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    """Кастомный вьюсет для работы с категориями и жанрами."""
+
+
 class CategoryViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -173,7 +180,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_queryset(self):
-        return Title.objects.all().annotate(rating=Avg('reviews__score'))
+        return Title.objects.all().annotate(
+            rating=Avg('reviews__score')
+        ).order_by(*Title._meta.ordering)
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):

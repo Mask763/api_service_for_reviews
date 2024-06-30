@@ -3,12 +3,15 @@ import os
 
 import django
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+from reviews.models import Category, Genre, Title, Review, Comment
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api_yamdb.settings')
 django.setup()
 
-from reviews.models import Category, Genre, Title, Review, Comment
-from users.models import CustomUser
+
+User = get_user_model()
 
 DATA_DIR = os.path.join(settings.BASE_DIR, 'static', 'data')
 
@@ -84,7 +87,7 @@ def load_users():
     ) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            CustomUser.objects.update_or_create(
+            User.objects.update_or_create(
                 id=row['id'],
                 defaults={
                     'username': row['username'],

@@ -6,11 +6,13 @@ from django.db import models
 from .constants import (
     MAX_CHARFIELD_LENGTH,
     MAX_EMAIL_LENGTH,
+    MAX_LENGTH_MAIN,
     USER_ROLES,
     USER_ROLE_ADMIN,
     USER_ROLE_MODERATOR
 )
-from .validators import validate_forbidden_username
+from .mixins import NameSlugMixin
+from .validators import validate_forbidden_username, validate_year
 
 
 class ApplicationUser(AbstractUser):
@@ -70,10 +72,6 @@ class ApplicationUser(AbstractUser):
     @property
     def is_moderator(self):
         return self.role == USER_ROLE_MODERATOR
-
-from .constants import MAX_LENGTH_MAIN
-from .mixins import NameSlugMixin
-from .service import validate_year
 
 
 User = get_user_model()
