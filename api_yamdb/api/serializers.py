@@ -117,13 +117,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         exclude = ('title',)
 
     def validate(self, data):
-        data = super().validate(data)
-        self.validate_one_review()
-        return data
-
-    def validate_one_review(self):
         request = self.context['request']
         title_id = request.parser_context.get('kwargs').get('title_id')
+
         if (
             request.method == "POST"
             and Review.objects.filter(
@@ -134,6 +130,8 @@ class ReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Запрещено добавлять больше одного отзыва на одно произведение'
             )
+
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -159,7 +157,6 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-
         fields = ('name', 'slug')
 
 
@@ -199,7 +196,7 @@ class TitleListSerializer(serializers.ModelSerializer):
 
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
-    rating = serializers.SerializerMethodField()
+    rating = serializers.IntegerField(default=None)
 
     class Meta:
         model = Title
@@ -207,6 +204,3 @@ class TitleListSerializer(serializers.ModelSerializer):
             'name', 'genre', 'category', 'year',
             'description', 'id', 'rating'
         )
-
-    def get_rating(self, obj):
-        return obj.rating if hasattr(obj, 'rating') else None

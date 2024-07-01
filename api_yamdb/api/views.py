@@ -1,12 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, mixins, permissions, status, viewsets
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
 
 from .filters import TitleFilter
 from .permissions import (
@@ -33,6 +33,7 @@ from .serializers import (
     UserSerializer
 )
 from reviews.mixins import CategoryGenreMixin
+from .viewsets import ListCreateDestroyViewSet
 
 
 User = get_user_model()
@@ -63,9 +64,9 @@ class TokenObtainView(APIView):
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         user = get_object_or_404(User, username=username)
-        refresh = RefreshToken.for_user(user)
+        access_token = AccessToken.for_user(user)
         return Response(
-            {'token': str(refresh.access_token)},
+            {'token': str(access_token)},
             status=status.HTTP_200_OK
         )
 
@@ -153,15 +154,6 @@ class CommentsViewSet(viewsets.ModelViewSet):
         )
 
 
-class ListCreateDestroyViewSet(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet
-):
-    """Кастомный вьюсет для работы с категориями и жанрами."""
-
-
 class CategoryViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -173,7 +165,7 @@ class GenreViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
     search_fields = ('name', 'genre__slug', 'category__slug', 'year')

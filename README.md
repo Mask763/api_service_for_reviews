@@ -65,7 +65,7 @@ cd api_yamdb
 python load_csv_to_db.py
 ```
 ### Основной стек
-Проект написан с использованием Python 3.9.10, Django и Django REST Framework.
+Проект написан с использованием Python 3.9, Django и Django REST Framework.
 ### Авторы проекта
 [AkhtemKurtiev](https://github.com/AkhtemKurtiev)
 [YakovlevKir](https://github.com/YakovlevKir)

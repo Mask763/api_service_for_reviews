@@ -17,5 +17,5 @@ def validate_year(value):
     year = datetime.now().year
     if value > year:
         raise ValidationError(
-            'Неверно введён год!'
+            'Значение данного поля не может превышать значение текущего года!'
         )
