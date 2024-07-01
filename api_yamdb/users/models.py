@@ -1,14 +1,14 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from reviews.constants import (
+from .constants import (
     MAX_CHARFIELD_LENGTH,
     MAX_EMAIL_LENGTH,
     USER_ROLES,
     USER_ROLE_ADMIN,
     USER_ROLE_MODERATOR
 )
-from reviews.validators import validate_forbidden_username
+from .validators import validate_forbidden_username
 
 
 class ApplicationUser(AbstractUser):

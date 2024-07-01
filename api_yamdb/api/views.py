@@ -165,16 +165,14 @@ class GenreViewSet(CategoryGenreMixin, ListCreateDestroyViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).order_by(*Title._meta.ordering)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
     search_fields = ('name', 'genre__slug', 'category__slug', 'year')
     http_method_names = ('get', 'post', 'patch', 'delete')
-
-    def get_queryset(self):
-        return Title.objects.all().annotate(
-            rating=Avg('reviews__score')
-        ).order_by(*Title._meta.ordering)
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
