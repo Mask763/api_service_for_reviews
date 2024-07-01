@@ -5,11 +5,11 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from api_yamdb.settings import EMAIL_FROM
-from reviews.constants import (
+from reviews.models import Category, Comment, Genre, Review, Title
+from users.constants import (
     MAX_CHARFIELD_LENGTH, MAX_EMAIL_LENGTH, USER_ROLES
 )
-from reviews.models import Category, Comment, Genre, Review, Title
-from reviews.validators import validate_forbidden_username
+from users.validators import validate_forbidden_username
 
 
 User = get_user_model()
