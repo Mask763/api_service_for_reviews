@@ -1,98 +1,49 @@
-from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth import get_user_model
 from django.db import models
 
 from .constants import (
-    MAX_CHARFIELD_LENGTH,
-    MAX_EMAIL_LENGTH,
     MAX_LENGTH_MAIN,
-    USER_ROLES,
-    USER_ROLE_ADMIN,
-    USER_ROLE_MODERATOR
+    MAX_LENGTH_SLUG,
+    MAX_SCORE,
+    MIN_SCORE,
 )
-from .mixins import NameSlugMixin
-from .validators import validate_forbidden_username, validate_year
-
-
-class ApplicationUser(AbstractUser):
-    username = models.CharField(
-        max_length=MAX_CHARFIELD_LENGTH,
-        unique=True,
-        error_messages={
-            'unique': 'Пользователь с таким именем уже существует.'
-        },
-        validators=[
-            AbstractUser.username_validator,
-            validate_forbidden_username
-        ],
-        verbose_name='Имя пользователя',
-    )
-    email = models.EmailField(
-        max_length=MAX_EMAIL_LENGTH,
-        unique=True,
-        error_messages={
-            'unique': 'Пользователь с таким email уже существует.'
-        },
-        verbose_name='Email',
-    )
-    first_name = models.CharField(
-        max_length=MAX_CHARFIELD_LENGTH,
-        verbose_name='Имя',
-        blank=True,
-    )
-    last_name = models.CharField(
-        max_length=MAX_CHARFIELD_LENGTH,
-        verbose_name='Фамилия',
-        blank=True,
-    )
-    bio = models.TextField(
-        verbose_name='Биография',
-        blank=True,
-    )
-    role = models.CharField(
-        max_length=max([len(role[0]) for role in USER_ROLES]),
-        choices=USER_ROLES,
-        default='user',
-        verbose_name='Роль',
-    )
-
-    class Meta:
-        verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
-        ordering = ('username',)
-
-    def __str__(self):
-        return self.username
-
-    @property
-    def is_admin(self):
-        return self.role == USER_ROLE_ADMIN
-
-    @property
-    def is_moderator(self):
-        return self.role == USER_ROLE_MODERATOR
+from .validators import validate_year
 
 
 User = get_user_model()
 
 
-class Category(NameSlugMixin):
+class NameSlug(models.Model):
+    name = models.CharField('Название', max_length=MAX_LENGTH_MAIN)
+    slug = models.SlugField('Слаг', unique=True, max_length=MAX_LENGTH_SLUG)
+
+    class Meta:
+        abstract = True
+        ordering = ('-slug',)
+
+    def __str__(self) -> str:
+        return self.slug
+
+
+class Category(NameSlug):
     """Модель Категории."""
 
-    class Meta:
-        ordering = ('-slug',)
+    class Meta(NameSlug.Meta):
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
 
 
-class Genre(NameSlugMixin):
+class Genre(NameSlug):
     """Модель Жанра."""
 
-    class Meta:
-        ordering = ('-slug',)
+    class Meta(NameSlug.Meta):
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
 
 
 class Title(models.Model):
-    """Модель Фильма."""
+    """Модель произведения."""
     name = models.CharField(
         'Название проекта',
         null=False,
@@ -124,6 +75,8 @@ class Title(models.Model):
 
     class Meta:
         ordering = ('name',)
+        verbose_name = 'Произведение'
+        verbose_name_plural = 'Произведения'
 
 
 class Review(models.Model):
@@ -134,8 +87,8 @@ class Review(models.Model):
     text = models.TextField()
     score = models.PositiveSmallIntegerField(
         validators=[
-            MaxValueValidator(10),
-            MinValueValidator(1)
+            MaxValueValidator(MAX_SCORE),
+            MinValueValidator(MIN_SCORE)
         ]
     )
     pub_date = models.DateTimeField(
@@ -143,6 +96,8 @@ class Review(models.Model):
 
     class Meta:
         ordering = ('pub_date',)
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         default_related_name = 'reviews'
         constraints = [
             models.UniqueConstraint(
@@ -168,6 +123,8 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ('pub_date',)
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'
 
     def __str__(self):
